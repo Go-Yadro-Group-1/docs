@@ -14,19 +14,19 @@ System_Boundary(tracker, "Jira Tracker") {
 
     ContainerDb(postgres, "PostgreSQL", "SQL Database", "Хранит сырые данные по задачам")
 
-    ContainerDb(mongo, "MongoDB", "Document Store", "Хранит аналитические данные для дашбордов")
+    ContainerDb(mongo, "Redis", "Cache", "Кэширует результаты аналитических запросов")
 }
 
 System_Ext(jira, "Atlassian Jira", "Внешняя система управления задачами")
 
 Rel_R(user, webapp, "Работает с интерфейсом", "HTTPS")
-Rel(webapp, backend, "Запросы данных и команды", "REST API / JSON")
+Rel(webapp, backend, "Запросы данных и команды", "REST API")
 
-Rel(backend, connector, "Запускает синхронизацию с Jira", "gRPC / HTTP")
+Rel(backend, connector, "Запускает синхронизацию с Jira", "HTTP")
 Rel(backend, postgres, "Читает сырые данные для аналитики", "SQL")
-Rel(backend, mongo, "Читает/записывает аналитические агрегаты", "MongoDB Protocol")
+Rel(backend, mongo, "Кэширует данные", "Redis Protocol")
 
-Rel(connector, jira, "Загружает issues, changelogs", "REST API v2")
+Rel(connector, jira, "Загружает issues, changelogs", "REST API")
 Rel(connector, postgres, "Сохраняет сырые данные", "SQL")
 
 @enduml
