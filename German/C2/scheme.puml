@@ -1,23 +1,32 @@
 @startuml
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
-Person(userA, "User")
-System_Boundary(sysA, "Jira Tracker") {
-    Container(webapp, "Web Application", "Angular(TS)", "Позволяет пользователю работать с приложением через удобный интерфейс")
-    Container(servA, "Backend", "Golang", "Обрабатывает входящие запросы")
-    Container(servB, "Jira Connector", "Golang", "Загружает задачи из Jira и отдаёт их во внешнее пользование")
-    ContainerDb(dbA, "PostgreSQL", "SQL", "Используется для хранения 'сырых данных по таскам'")
-    ContainerDb(dbB, "MongoDB", "NOSQL", "Используется для хранения аналитических данных (без связей)")
+title C2 Container: Jira Tracker
+
+Person(user, "Пользователь", "Аналитик или менеджер проекта")
+
+System_Boundary(tracker, "Jira Tracker") {
+    Container(webapp, "Web Application", "Angular, TypeScript", "Интерфейс для работы с проектами и дашбордами")
+
+    Container(backend, "Backend API", "Golang", "Обрабатывает запросы, вычисляет аналитику, управляет ETL-процессом переноса сырых данных в аналитические")
+
+    Container(connector, "Jira Connector", "Golang", "Загружает задачи из Jira, нормализует и сохраняет сырые данные")
+
+    ContainerDb(postgres, "PostgreSQL", "SQL Database", "Хранит сырые данные по задачам")
+
+    ContainerDb(mongo, "MongoDB", "Document Store", "Хранит аналитические данные для дашбордов")
 }
 
-System(sysB, "Jira")
+System_Ext(jira, "Atlassian Jira", "Внешняя система управления задачами")
 
-Rel_R(userA, webapp, "Запрашивает информацию по задачам из Jira, получает аналитику или дашборды", "UI")
-Rel(webapp, servA, "Запрашивает загрузку/анализ данных", "Backend API")
-Rel_R(servA, servB, "Запрашивает данные из Jira", "Connector API")
-Rel(servA, dbB, "Работает с аналитическими данными")
-Rel(servB, dbA, "Работает с сырыми данными по задачам")
+Rel_R(user, webapp, "Работает с интерфейсом", "HTTPS")
+Rel(webapp, backend, "Запросы данных и команды", "REST API / JSON")
 
-Rel(servB, sysB, "Запрашивает данные по задачам")
+Rel(backend, connector, "Запускает синхронизацию с Jira", "gRPC / HTTP")
+Rel(backend, postgres, "Читает сырые данные для аналитики", "SQL")
+Rel(backend, mongo, "Читает/записывает аналитические агрегаты", "MongoDB Protocol")
+
+Rel(connector, jira, "Загружает issues, changelogs", "REST API v2")
+Rel(connector, postgres, "Сохраняет сырые данные", "SQL")
 
 @enduml
