@@ -6,9 +6,18 @@ System_Boundary(sysA, "Jira Tracker") {
     Container(webapp, "Web Application", "Angular(TS)", "Ползволяет пользователю использовать приложение в удобном для него интерфейсе")
     Container(servA, "Backend", "Golang", "Обрабатывает входящие запросы")
     Container(servB, "Jira Connector", "Golang", "Загружает задачи из Jira и отдаёт их во внешнее пользование")
+    ContainerDb(dbA, "PostgreSQL", "SQL", "Используется для хранения 'сырых данных по таскам'")
+    ContainerDb(dbB, "MongoDB", "NOSQL", "Используется для хранения аналитических данных (без свзяей)")
 }
 
-Rel_R(userA, webapp, "Запрашивает информацию по задачам из Jira, Получает аналитическую информацию, или дашборды", "Открытое API")
+System(sysB, "Jira")
+
+Rel_R(userA, webapp, "Запрашивает информацию по задачам из Jira, Получает аналитическую информацию, или дашборды", "UI")
 Rel(webapp, servA, "Запрашивает загрузку/аналитику данных", "Backend API")
 Rel_R(servA, servB, "Загружает нужные данные из Jira", "Connector API")
+Rel(servA, dbB, "Работает с аналитическими данными")
+Rel(servB, dbA, "Работает с сырыми данными по задачам")
+
+Rel(servB, sysB, "Получение данных по задачам")
+
 @enduml
