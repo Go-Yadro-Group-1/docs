@@ -1,0 +1,14 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+Person(userA, "User")
+System_Boundary(sysA, "Jira Tracker") {
+    Container(webapp, "Web Application", "Angular(TS)", "Ползволяет пользователю использовать приложение в удобном для него интерфейсе")
+    Container(servA, "Backend", "Golang", "Обрабатывает входящие запросы")
+    Container(servB, "Jira Connector", "Golang", "Загружает задачи из Jira и отдаёт их во внешнее пользование")
+}
+
+Rel_R(userA, webapp, "Запрашивает информацию по задачам из Jira, Получает аналитическую информацию, или дашборды", "Открытое API")
+Rel(webapp, servA, "Запрашивает загрузку/аналитику данных", "Backend API")
+Rel_R(servA, servB, "Загружает нужные данные из Jira", "Connector API")
+@enduml
