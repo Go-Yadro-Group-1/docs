@@ -1,0 +1,37 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title C3 Component: Jira Connector
+
+Container_Boundary(connector, "Jira Connector") {
+    Component(grpc_server, "Server", "Golang", "Принимает команды на синхронизацию от Backend")
+
+    Component(sync_manager, "Sync Manager", "Golang", "Управляет процессом загрузки")
+
+    Component(jira_client, "Jira API Client", "Golang", "HTTP-клиент для Jira REST API")
+
+    Component(rate_limiter, "Rate Limiter", "Golang", "Контроль частоты запросов к Jira API")
+
+    Component(mapper, "Data Mapper", "Golang", "Приведение сырых JSON к нужным типам")
+
+    Component(postgres_repo, "PostgreSQL Repository", "Golang, pgx", "Сохранение данных")
+}
+
+Container(backend, "Backend API", "Golang", "Запрашивает синхронизацию")
+ContainerDb(postgres, "PostgreSQL", "SQL Database", "Сырые данные")
+System_Ext(jira, "Atlassian Jira", "REST API v2")
+
+Rel(backend, grpc_server, "Запрос на загрузку данных", "gRPC/REST")
+Rel(grpc_server, sync_manager, "Запуск синхронизации")
+
+Rel(sync_manager, jira_client, "Запросы данных")
+Rel(sync_manager, mapper, "Сырой JSON")
+Rel(sync_manager, postgres_repo, "Сохранение данных")
+
+Rel(jira_client, rate_limiter, "Проверка лимитов перед запросом")
+Rel(jira_client, jira, "GET /rest/api/v2/, /issue, /project", "HTTP")
+
+Rel(mapper, postgres_repo, "Модели")
+Rel(postgres_repo, postgres, "INSERT/UPDATE", "TCP")
+
+@enduml
