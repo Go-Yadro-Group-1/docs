@@ -5,28 +5,34 @@ title C2 Container: Jira Tracker
 
 Person(user, "Пользователь", "Аналитик или менеджер проекта")
 
-System_Boundary(tracker, "Jira Tracker") {
+Boundary(tracker, "Jira Tracker") {
     Container(webapp, "Web Application", "Angular, TypeScript", "Интерфейс для работы с проектами и дашбордами")
 
-    Container(backend, "Backend API", "Golang", "Обрабатывает запросы, вычисляет аналитику, управляет ETL-процессом переноса сырых данных в аналитические")
+    Container(gateway, "Gateway Service", "Golang", "Обрабатывает запросы")
+
+    Container(analytic, "Analyzer Service", "Golang", "Вычисляет аналитику")
 
     Container(connector, "Jira Connector", "Golang", "Загружает задачи из Jira, нормализует и сохраняет сырые данные")
 
     ContainerDb(postgres, "PostgreSQL", "SQL Database", "Хранит сырые данные по задачам")
 
     ContainerDb(mongo, "Redis", "Cache", "Кэширует результаты аналитических запросов")
+
+    ContainerQueue(queue, "RabbitMQ", "Broker/Queue", "Используется для межсервисного взаимодействия")
 }
 
 System_Ext(jira, "Atlassian Jira", "Внешняя система управления задачами")
 
 Rel_R(user, webapp, "Работает с интерфейсом", "HTTPS")
-Rel(webapp, backend, "Запросы данных и команды", "REST API")
+Rel_R(webapp, gateway, "Запросы данных и команды", "REST API")
 
-Rel(backend, connector, "Запускает синхронизацию с Jira", "HTTP")
-Rel(backend, postgres, "Читает сырые данные для аналитики", "SQL")
-Rel(backend, mongo, "Кэширует данные", "Redis Protocol")
+Rel_D(gateway, analytic, "Запрос аналитики", "REST API")
+Rel_R(gateway, queue, "Запрос на загрузку/обновление данных", "Some Protocol")
+Rel_D(queue, connector, "Обработка запросов из очереди", "Some Protocol")
 
-Rel(connector, jira, "Загружает issues, changelogs", "REST API")
+Rel(analytic, postgres, "Читает сырые данные для аналитики", "SQL")
+
+Rel_R(connector, jira, "Загружает issues, changelogs", "REST API")
 Rel(connector, postgres, "Сохраняет сырые данные", "SQL")
 
 @enduml
