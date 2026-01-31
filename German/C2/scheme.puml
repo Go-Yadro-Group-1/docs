@@ -23,16 +23,16 @@ Boundary(tracker, "Jira Tracker") {
 
 System_Ext(jira, "Atlassian Jira", "Внешняя система управления задачами")
 
-Rel_R(user, webapp, "Работает с интерфейсом", "HTTPS")
-Rel_R(webapp, gateway, "Запросы данных и команды", "REST API")
+Rel_D(user, webapp, "Работает с интерфейсом", "HTTPS")
+Rel_D(webapp, gateway, "Запросы данных и команды", "REST API")
 
-Rel_D(gateway, analytic, "Запрос аналитики", "REST API")
+Rel_L(gateway, analytic, "Запрос аналитики", "REST API")
 Rel_R(gateway, queue, "Запрос на загрузку/обновление данных", "Some Protocol")
 Rel_D(queue, connector, "Обработка запросов из очереди", "Some Protocol")
 
 Rel(analytic, postgres, "Читает сырые данные для аналитики", "SQL")
 
-Rel_R(connector, jira, "Загружает issues, changelogs", "REST API")
+Rel_D(connector, jira, "Загружает issues, changelogs", "REST API")
 Rel(connector, postgres, "Сохраняет сырые данные", "SQL")
 
 @enduml
