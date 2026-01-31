@@ -4,34 +4,31 @@
 title C3 Component: Jira Connector
 
 Container_Boundary(connector, "Jira Connector") {
-    Component(grpc_server, "Server", "Golang", "Принимает команды на синхронизацию от Backend")
+    Component(queue_consumer, "Queue Consumer", "Golang", "AMQP-клиент для получения задач на синхронизацию")
+    Component(queue_publisher, "Queue Publisher", "Golang", "AMQP-клиент для публикации результатов")
 
-    Component(sync_manager, "Sync Manager", "Golang", "Управляет процессом загрузки")
+    Component(sync_service, "Sync Service", "Golang", "Бизнес-логика управления процессом синхронизации")
 
-    Component(jira_client, "Jira API Client", "Golang", "HTTP-клиент для Jira REST API")
-
-    Component(rate_limiter, "Rate Limiter", "Golang", "Контроль частоты запросов к Jira API")
-
-    Component(mapper, "Data Mapper", "Golang", "Приведение сырых JSON к нужным типам")
-
-    Component(postgres_repo, "PostgreSQL Repository", "Golang, pgx", "Сохранение данных")
+    Component(jira_client, "Jira API Client", "Golang", "HTTP-клиент для Jira REST API v2")
+    Component(data_mapper, "Data Mapper", "Golang", "Нормализация сырых JSON в доменные модели")
+    Component(postgres_repo, "PostgreSQL Repository", "Golang, pgx", "Сохранение нормализованных данных")
 }
 
-Container(backend, "Backend API", "Golang", "Запрашивает синхронизацию")
-ContainerDb(postgres, "PostgreSQL", "SQL Database", "Сырые данные")
-System_Ext(jira, "Atlassian Jira", "REST API v2")
+ContainerQueue(queue, "RabbitMQ", "Broker/Queue", "Используется для межсервисного взаимодействия")
+ContainerDb(postgres, "PostgreSQL", "SQL Database", "Хранит сырые данные по задачам")
+System_Ext(jira, "Atlassian Jira", "Внешняя система управления задачами")
 
-Rel(backend, grpc_server, "Запрос на загрузку данных", "gRPC/REST")
-Rel(grpc_server, sync_manager, "Запуск синхронизации")
+Rel_U(queue, queue_consumer, "AMQP", "Получение задач на синхронизацию")
+Rel_D(queue_consumer, sync_service, "", "Передача задач")
 
-Rel(sync_manager, jira_client, "Запросы данных")
-Rel(sync_manager, mapper, "Сырой JSON")
-Rel(sync_manager, postgres_repo, "Сохранение данных")
+Rel_D(sync_service, jira_client, "", "Запрос данных из Jira")
+Rel_D(jira_client, jira, "REST API", "GET /rest/api/2/issue, /project, /changelog")
+Rel_D(sync_service, data_mapper, "", "Нормализация данных")
+Rel_D(sync_service, postgres_repo, "", "Сохранение данных")
+Rel_U(sync_service, queue_publisher, "", "Отправка результатов")
 
-Rel(jira_client, rate_limiter, "Проверка лимитов перед запросом")
-Rel(jira_client, jira, "GET /rest/api/v2/, /issue, /project", "HTTP")
+Rel_D(postgres_repo, postgres, "SQL", "INSERT/UPDATE")
 
-Rel(mapper, postgres_repo, "Модели")
-Rel(postgres_repo, postgres, "INSERT/UPDATE", "TCP")
+Rel_U(queue_publisher, queue, "AMQP", "Публикация результатов синхронизации")
 
 @enduml
