@@ -16,8 +16,6 @@ Boundary(tracker, "Jira Tracker") {
 
     ContainerDb(postgres, "PostgreSQL", "SQL Database", "Хранит сырые данные по задачам")
 
-    ContainerDb(mongo, "Redis", "Cache", "Кэширует результаты аналитических запросов")
-
     ContainerQueue(queue, "RabbitMQ", "Broker/Queue", "Используется для межсервисного взаимодействия")
 }
 
