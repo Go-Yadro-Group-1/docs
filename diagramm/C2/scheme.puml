@@ -10,7 +10,7 @@ Boundary(tracker, "Jira Tracker") {
 
     Container(gateway, "Gateway Service", "Golang", "Обрабатывает запросы")
 
-    Container(analytic, "Analyzer Service", "Golang", "Вычисляет аналитику")
+    Container(analytic, "Analyzer Service", "Golang", "Сервис по анализу данных о проектах")
 
     Container(connector, "Jira Connector", "Golang", "Загружает задачи из Jira, нормализует и сохраняет сырые данные")
 
@@ -23,10 +23,11 @@ System_Ext(jira, "Atlassian Jira", "Внешняя система управле
 
 Rel_D(user, webapp, "Работает с интерфейсом", "HTTPS")
 Rel_D(webapp, gateway, "Запросы данных и команды", "REST API")
+Rel(gateway, connector, "Запрос заголовков/описаня проектов", "gRPC")
 
-Rel_L(gateway, analytic, "Запрос аналитики", "REST API")
-Rel_R(gateway, queue, "Запрос на загрузку/обновление данных", "Some Protocol")
-Rel_D(queue, connector, "Обработка запросов из очереди", "Some Protocol")
+Rel_L(gateway, analytic, "Запрос аналитики", "gRPC")
+Rel_R(gateway, queue, "Запрос на загрузку/обновление данных", "AMQP")
+Rel_D(queue, connector, "Обработка запросов из очереди", "AMQP")
 
 Rel(analytic, postgres, "Читает сырые данные для аналитики", "SQL")
 
