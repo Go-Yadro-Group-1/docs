@@ -8,7 +8,8 @@ import (
 
 	"github.com/Go-Yadro-Group-1/config"
 	"github.com/Go-Yadro-Group-1/db"
-	"github.com/Go-Yadro-Group-1/repository"
+	"github.com/Go-Yadro-Group-1/repository/analytics"
+	"github.com/Go-Yadro-Group-1/repository/raw"
 )
 
 func main() {
@@ -26,11 +27,11 @@ func main() {
 	defer database.Close()
 	log.Println("Database connection established")
 
-	projectRepo := repository.NewRawProjectRepository(database)
-	authorRepo := repository.NewRawAuthorRepository(database)
-	issueRepo := repository.NewRawIssueRepository(database)
-	statusChangeRepo := repository.NewStatusChangeRepository(database)
-	analyticsRepo := repository.NewAnalyticsRepository(database)
+	projectRepo := raw.NewRawProjectRepository(database)
+	authorRepo := raw.NewRawAuthorRepository(database)
+	issueRepo := raw.NewRawIssueRepository(database)
+	statusChangeRepo := raw.NewStatusChangeRepository(database)
+	analyticsRepo := analytics.NewAnalyticsRepository(database)
 
 	ctx := context.Background()
 
@@ -52,8 +53,8 @@ func main() {
 	log.Println("\n All tests completed successfully!")
 }
 
-func testProjects(ctx context.Context, repo *repository.RawProjectRepository) {
-	project := &repository.RawProject{
+func testProjects(ctx context.Context, repo *raw.RawProjectRepository) {
+	project := &raw.RawProject{
 		ID:    9999,
 		Title: "Test Project",
 	}
@@ -88,7 +89,7 @@ func testProjects(ctx context.Context, repo *repository.RawProjectRepository) {
 	}
 }
 
-func testAuthors(ctx context.Context, repo *repository.RawAuthorRepository) {
+func testAuthors(ctx context.Context, repo *raw.RawAuthorRepository) {
 	author, err := repo.GetOrCreate(ctx, 8888, "Test Author")
 	if err != nil {
 		log.Printf("Author creation error: %v", err)
@@ -104,11 +105,11 @@ func testAuthors(ctx context.Context, repo *repository.RawAuthorRepository) {
 	}
 }
 
-func testIssues(ctx context.Context, repo *repository.RawIssueRepository, projectRepo *repository.RawProjectRepository, authorRepo *repository.RawAuthorRepository) {
-	_ = projectRepo.Upsert(ctx, &repository.RawProject{ID: 9999, Title: "Test Project"})
+func testIssues(ctx context.Context, repo *raw.RawIssueRepository, projectRepo *raw.RawProjectRepository, authorRepo *raw.RawAuthorRepository) {
+	_ = projectRepo.Upsert(ctx, &raw.RawProject{ID: 9999, Title: "Test Project"})
 	_, _ = authorRepo.GetOrCreate(ctx, 8888, "Test Author")
 
-	issue := &repository.RawIssue{
+	issue := &raw.RawIssue{
 		ID:          7777,
 		ProjectID:   9999,
 		AuthorID:    8888,
@@ -153,8 +154,8 @@ func testIssues(ctx context.Context, repo *repository.RawIssueRepository, projec
 	log.Printf("Project 9999 statistics: open=%d, closed=%d", openCount, closedCount)
 }
 
-func testStatusChanges(ctx context.Context, repo *repository.StatusChangeRepository) {
-	change := &repository.StatusChange{
+func testStatusChanges(ctx context.Context, repo *raw.StatusChangeRepository) {
+	change := &raw.StatusChange{
 		IssueID:    7777,
 		AuthorID:   8888,
 		ChangeTime: time.Now(),
@@ -176,7 +177,7 @@ func testStatusChanges(ctx context.Context, repo *repository.StatusChangeReposit
 	}
 }
 
-func testAnalytics(ctx context.Context, repo *repository.AnalyticsRepository) {
+func testAnalytics(ctx context.Context, repo *analytics.AnalyticsRepository) {
 	testData := map[string]interface{}{
 		"bins":   []int{10, 20, 30},
 		"values": []int{5, 15, 25},
