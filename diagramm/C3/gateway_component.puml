@@ -4,34 +4,25 @@
 title C3 Component: Gateway Service
 
 Container_Boundary(gateway, "Gateway Service") {
-    Component(router, "HTTP Router", "Golang", "Маршрутизация HTTP")
-
-    Component(handlers, "API Handlers", "Golang", "REST-контроллеры")
-
-    Component(analytics_service, "Analytics Service", "Golang", "Бизнес-логика работы с аналитическими данными")
-    Component(sync_service, "Sync Service", "Golang", "Бизнес-логика управления синхронизацией задач")
-
-    Component(analyzer_client, "Analyzer Client", "Golang", "HTTP-клиент для Analyzer Service")
-    Component(queue_publisher, "Queue Publisher", "Golang", "AMQP-клиент для публикации сообщений")
-    Component(queue_consumer, "Queue Consumer", "Golang", "AMQP-клиент для получения сообщений")
+    Component(server, "HTTP Server", "Gin / chi", "Принимает входящие REST запросы")
+Component(handlers, "Handlers", "Golang", "Обработчики REST эндпоинтов")
+    Component(connector_client, "Connector gRPC Client", "Golang / gRPC", "Запрашивает заголовки и описания проектов")
+    Component(analyzer_client, "Analyzer gRPC Client", "Golang / gRPC", "Запрашивает аналитические данные")
+    Component(amqp_publisher, "AMQP Publisher", "Golang / AMQP", "Публикует команды на загрузку/обновление данных")
 }
 
-ContainerQueue(queue, "RabbitMQ", "Broker/Queue", "Используется для межсервисного взаимодействия")
 Container(webapp, "Web Application", "Angular", "SPA")
 Container(analyzer, "Analyzer Service", "Golang", "Сервис для вычисления аналитических данных")
+Container(connector, "Connector Service", "Golang", "Сервис по получению данных из Jira")
+ContainerQueue(queue, "RabbitMQ", "Broker/Queue", "Используется для межсервисного взаимодействия")
 
-Rel_D(webapp, router, "HTTP", "Отправка запросов на сервер")
-Rel_D(router, handlers, "", "Передача запросов")
-
-Rel_L(handlers, analytics_service, "", "Запрос аналитики")
-Rel_R(handlers, sync_service, "", "Запрос на синхронизацию")
-
-Rel_D(analytics_service, analyzer_client, "", "Вызов внешнего сервиса")
-Rel_D(sync_service, queue_publisher, "", "Отправка задачи в очередь")
-
-Rel_D(analyzer_client, analyzer, "REST API", "Запрос на вычисление аналитических данных")
-Rel_D(queue_publisher, queue, "AMQP", "Публикация задач на синхронизацию")
-Rel_U(queue, queue_consumer, "AMQP", "Получение результатов синхронизации")
-Rel_U(queue_consumer, sync_service, "", "Передача результатов")
+Rel(webapp, server, "Запросы данных и команды", "HTTPS / REST")
+Rel(server, handlers, "Передаёт запрос")
+Rel(handlers, connector_client, "Запрос заголовков/описаний проектов")
+Rel(handlers, analyzer_client, "Запрос аналитики")
+Rel(handlers, amqp_publisher, "Команда на загрузку/обновление")
+Rel(connector_client, connector, "gRPC")
+Rel(analyzer_client, analyzer, "gRPC")
+Rel(amqp_publisher, queue, "AMQP")
 
 @enduml
