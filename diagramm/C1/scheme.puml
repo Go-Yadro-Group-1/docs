@@ -1,0 +1,15 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title C1 Context: Jira Tracker
+
+Person(user, "Пользователь", "Аналитик или менеджер проекта, которому нужна информация по задачам")
+
+System(tracker, "Jira Tracker", "Позволяет загружать задачи из Jira, анализировать их и визуализировать на дашбордах")
+
+System_Ext(jira, "Atlassian Jira", "Внешняя система управления задачами")
+
+Rel(user, tracker, "Просматривает аналитику, дашборды, запрашивает загрузку данных", "HTTP")
+Rel(tracker, jira, "Загружает данные по задачам", "REST API")
+
+@enduml

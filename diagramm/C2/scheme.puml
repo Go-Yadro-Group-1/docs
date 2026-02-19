@@ -1,0 +1,37 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title C2 Container: Jira Tracker
+
+Person(user, "Пользователь", "Аналитик или менеджер проекта")
+
+Boundary(tracker, "Jira Tracker") {
+    Container(webapp, "Web Application", "Angular, TypeScript", "Интерфейс для работы с проектами и дашбордами")
+
+    Container(gateway, "Gateway Service", "Golang", "Обрабатывает запросы")
+
+    Container(analytic, "Analyzer Service", "Golang", "Сервис по анализу данных о проектах")
+
+    Container(connector, "Jira Connector", "Golang", "Загружает задачи из Jira, нормализует и сохраняет сырые данные")
+
+    ContainerDb(postgres, "PostgreSQL", "SQL Database", "Хранит сырые данные по задачам")
+
+    ContainerQueue(queue, "RabbitMQ", "Broker/Queue", "Используется для межсервисного взаимодействия")
+}
+
+System_Ext(jira, "Atlassian Jira", "Внешняя система управления задачами")
+
+Rel_D(user, webapp, "Работает с интерфейсом", "HTTPS")
+Rel_D(webapp, gateway, "Запросы данных и команды", "REST API")
+Rel(gateway, connector, "Запрос заголовков/описаня проектов", "gRPC")
+
+Rel_L(gateway, analytic, "Запрос аналитики", "gRPC")
+Rel_R(gateway, queue, "Запрос на загрузку/обновление данных", "AMQP")
+Rel_D(queue, connector, "Обработка запросов из очереди", "AMQP")
+
+Rel(analytic, postgres, "Читает сырые данные для аналитики", "SQL")
+
+Rel_D(connector, jira, "Загружает issues, changelogs", "REST API")
+Rel(connector, postgres, "Сохраняет сырые данные", "SQL")
+
+@enduml
