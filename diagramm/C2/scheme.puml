@@ -16,20 +16,21 @@ Boundary(tracker, "Jira Tracker") {
 
     ContainerDb(postgres, "PostgreSQL", "SQL Database", "Хранит сырые данные по задачам")
 
-    ContainerQueue(queue, "RabbitMQ", "Broker/Queue", "Используется для межсервисного взаимодействия")
+    ContainerDb(cache, "Cache", "Go in-memory", "Кэш аналитических данных в памяти сервиса")
 }
 
 System_Ext(jira, "Atlassian Jira", "Внешняя система управления задачами")
 
 Rel_D(user, webapp, "Работает с интерфейсом", "HTTPS")
 Rel_D(webapp, gateway, "Запросы данных и команды", "REST API")
-Rel(gateway, connector, "Запрос заголовков/описаня проектов", "gRPC")
+Rel_R(gateway, connector, "Запрос заголовков/описаня проектов напрямую из Jira", "gRPC")
 
 Rel_L(gateway, analytic, "Запрос аналитики", "gRPC")
-Rel_R(gateway, queue, "Запрос на загрузку/обновление данных", "AMQP")
-Rel_D(queue, connector, "Обработка запросов из очереди", "AMQP")
+Rel_L(gateway, analytic, "Запрос заголовков/описания проектов из БД", "gRPC")
+Rel_R(gateway, connector, "Запрос загрузки/обновления данных проекта", "gRPC")
 
-Rel(analytic, postgres, "Читает сырые данные для аналитики", "SQL")
+Rel(analytic, postgres, "Читает сырые данные для аналитики и заголовки проектов", "SQL")
+Rel_D(analytic, cache, "Читает/пишет аналитические данные", "in-memory")
 
 Rel_D(connector, jira, "Загружает issues, changelogs", "REST API")
 Rel(connector, postgres, "Сохраняет сырые данные", "SQL")
