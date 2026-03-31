@@ -1,0 +1,27 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title C3 Component: Analyzer Service
+
+left to right direction
+
+Container(gateway, "Gateway Service", "Golang", "Обрабатывает запросы")
+
+Container_Boundary(analyzer, "Analyzer Service") {
+    Component(router, "HTTP Router", "Golang", "Маршрутизация HTTP")
+    Component(handlers, "API Handlers", "Golang", "REST-контроллеры")
+    Component(analytics_service, "Analytics Service", "Golang", "Бизнес-логика вычисления аналитических метрик")
+    Component(postgres_repo, "PostgreSQL Repository", "Golang, pgx", "Чтение сырых данных по задачам")
+    ComponentDb(cache, "Cache", "Go in-memory", "Кэш аналитических данных в памяти сервиса")
+}
+
+
+ContainerDb(postgres, "PostgreSQL", "SQL Database", "Хранит сырые данные по задачам")
+
+Rel(gateway, router, "REST API", "Запрос аналитики")
+Rel(router, handlers, "", "Передача запросов")
+Rel(handlers, analytics_service, "", "Запрос вычисления метрик")
+Rel(analytics_service, postgres_repo, "", "Чтение сырых данных")
+Rel(postgres_repo, postgres, "SQL", "SELECT")
+Rel(analytics_service, cache, "in-memory", "Получение ранее вычисленных значений")
+@enduml
