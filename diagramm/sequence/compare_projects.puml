@@ -1,0 +1,57 @@
+@startuml CompareProjects
+scale 1600x700
+title CompareProjects
+
+skinparam defaultFontSize 29
+skinparam titleFontSize 33
+skinparam sequenceMessageAlign center
+
+participant Gateway
+participant "Analyzer gRPC" as AS
+participant "Service" as SVC
+participant "Cache" as CACHE
+database PostgreSQL
+
+Gateway -> AS: Запрос сравнения двух проектов
+AS -> SVC: Сравнить два проекта
+note over SVC: errgroup — оба проекта параллельно
+
+par Проект A
+    SVC -> CACHE: Получить статистику первого проекта из кеша
+    alt проект не найден в кеше / тип данных не найден в кеше
+        CACHE --> SVC: проект не найден в кеше / тип данных не найден в кеше
+        SVC -> PostgreSQL: Запросить статистику первого проекта из БД
+        alt ошибка запроса к БД для проекта N
+            PostgreSQL --> SVC: ошибка запроса к БД для проекта N
+        else Успех
+            PostgreSQL --> SVC: статистика первого проекта
+            SVC -> CACHE: сохранить в кеш
+        end
+    else Кеш актуален
+        CACHE --> SVC: статистика первого проекта
+    end
+and Проект B
+    SVC -> CACHE: Получить статистику второго проекта из кеша
+    alt проект не найден в кеше / тип данных не найден в кеше
+        CACHE --> SVC: проект не найден в кеше / тип данных не найден в кеше
+        SVC -> PostgreSQL: Запросить статистику второго проекта из БД
+        alt ошибка запроса к БД для проекта N
+            PostgreSQL --> SVC: ошибка запроса к БД для проекта N
+        else Успех
+            PostgreSQL --> SVC: статистика второго проекта
+            SVC -> CACHE: сохранить в кеш
+        end
+    else Кеш актуален
+        CACHE --> SVC: статистика второго проекта
+    end
+end
+
+alt ошибка запроса к БД в одном из запросов
+    SVC --> AS: не удалось получить статистику одного из проектов сравнения
+    AS --> Gateway: внутренняя ошибка сервера
+else Оба запроса успешны
+    SVC --> AS: статистика обоих проектов
+    AS --> Gateway: ответ со сравнительной статистикой
+end
+
+@enduml
