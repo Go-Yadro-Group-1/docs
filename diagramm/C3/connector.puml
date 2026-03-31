@@ -1,0 +1,29 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+left to right direction
+
+title C3 Component: Jira Connector
+
+Container(gateway, "Gateway service", "Golang", "Обрабатывает запросы")
+
+Container_Boundary(connector, "Jira Connector") {
+    Component(server, "Server", "Golang", "Принимает команды на синхронизацию от Gateway")
+
+    Component(sync_manager, "Sync Manager", "Golang", "Управляет процессом загрузки")
+
+    Component(jira_client, "Jira API Client", "Golang", "HTTP-клиент для Jira REST API")
+
+    Component(postgres_repo, "PostgreSQL Repository", "Golang, pgx", "Сохранение данных")
+}
+
+System_Ext(jira, "Atlassian Jira", "Внешняя система управления задачами")
+ContainerDb(postgres, "PostgreSQL", "SQL Database", "Сырые данные")
+
+Rel(gateway, server, "Запрос на загрузку/обновление данных", "gRPC")
+Rel(server, sync_manager, "Запуск синхронизации")
+Rel(sync_manager, jira_client, "Запросы данных")
+Rel(sync_manager, postgres_repo, "Сохранение данных")
+Rel(jira_client, jira, "REST API v2", "HTTP")
+Rel(postgres_repo, postgres, "INSERT", "TCP")
+@enduml
