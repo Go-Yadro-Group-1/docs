@@ -1,0 +1,74 @@
+@startuml GetChart
+scale 1600x700
+title GetChart
+
+skinparam defaultFontSize 29
+skinparam titleFontSize 33
+skinparam sequenceMessageAlign center
+
+participant Gateway
+participant "Analyzer gRPC" as AS
+participant "Service" as SVC
+participant "Cache" as CACHE
+database PostgreSQL
+
+Gateway -> AS: Запрос графика по типу
+AS -> SVC: Построить график для проекта
+
+alt неизвестный тип графика
+    SVC --> AS: неизвестный тип графика
+    AS -> AS: обернуть в "неподдерживаемый тип графика: <тип>"
+    AS --> Gateway: неверный аргумент запроса
+end
+
+SVC -> PostgreSQL: Запросить время последнего обновления проекта
+alt ошибка запроса к БД для проекта N
+    PostgreSQL --> SVC: ошибка запроса к БД для проекта N
+    SVC --> AS: не удалось получить время обновления проекта
+    AS --> Gateway: внутренняя ошибка сервера
+else Успех
+    PostgreSQL --> SVC: время обновления в БД
+end
+
+SVC -> CACHE: Запросить время последнего обновления кеша
+alt проект не найден в кеше
+    CACHE --> SVC: проект не найден в кеше
+    SVC -> SVC: считаем кеш устаревшим
+else Успех
+    CACHE --> SVC: время обновления кеша
+end
+
+alt Кеш актуален (TTL проверки: 30 сек)
+    SVC -> CACHE: Получить готовый график из кеша
+    alt тип данных не найден в кеше
+        CACHE --> SVC: тип данных не найден в кеше
+        SVC -> SVC: переходим к запросу в БД
+    else Успех
+        CACHE --> SVC: график из кеша
+    end
+end
+
+alt Кеш устарел или тип данных не найден в кеше
+    SVC -> PostgreSQL: Запросить сырые данные по типу графика
+    alt ошибка запроса к БД для проекта N
+        PostgreSQL --> SVC: ошибка запроса к БД для проекта N
+        SVC --> AS: не удалось получить данные для графика
+        AS --> Gateway: внутренняя ошибка сервера
+    else Успех
+        PostgreSQL --> SVC: сырые данные
+        SVC -> SVC: построить гистограмму из данных
+        alt нет закрытых задач для построения гистограммы
+            SVC --> AS: нет закрытых задач для построения гистограммы
+            AS -> AS: обернуть в "график недоступен:\nнет закрытых задач в проекте N"
+            AS --> Gateway: данные не найдены
+        else Успех
+            SVC -> CACHE: сохранить готовый график в кеш
+            SVC -> CACHE: обновить время последнего обновления
+        end
+    end
+end
+
+SVC --> AS: график в виде байтов
+AS --> Gateway: ответ с графиком
+
+@enduml

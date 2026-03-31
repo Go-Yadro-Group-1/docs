@@ -1,0 +1,43 @@
+@startuml GetAvailableProjects
+scale 1600x700
+title GetAvailableProjects
+
+skinparam defaultFontSize 29
+skinparam titleFontSize 33
+skinparam sequenceMessageAlign center
+
+participant Gateway
+participant "Connector gRPC" as CS
+participant "Jira Client" as JC
+participant "Jira REST API" as JIRA
+
+Gateway -> CS: Запрос списка доступных проектов
+CS -> JC: Получить список проектов
+
+JC -> JIRA: GET /rest/api/2/project/search
+alt превышен лимит запросов
+    JIRA --> JC: 429 Too Many Requests
+    JC -> JC: ожидание и повторный запрос\n(экспоненциальный backoff)
+    JC -> JIRA: GET /rest/api/2/project/search
+end
+
+alt неверный токен или учётные данные
+    JIRA --> JC: 401 Unauthorized
+    JC --> CS: несанкционированный доступ:\nневерный токен или учётные данные
+    CS --> Gateway: внутренняя ошибка сервера
+else недостаточно прав
+    JIRA --> JC: 403 Forbidden
+    JC --> CS: доступ запрещён: недостаточно прав
+    CS --> Gateway: внутренняя ошибка сервера
+else сервис Jira недоступен
+    JIRA --> JC: 503 Service Unavailable
+    JC --> CS: сервис Jira недоступен
+    CS --> Gateway: внутренняя ошибка сервера
+else Успех
+    JIRA --> JC: список проектов (JSON)
+    JC --> CS: []Project{id, title}
+end
+
+CS --> Gateway: GetAvailableProjectsResponse
+
+@enduml

@@ -1,0 +1,76 @@
+@startuml WorkerPool
+scale 1600x700
+title Worker Pool — загрузка задач проекта
+
+skinparam defaultFontSize 29
+skinparam titleFontSize 33
+skinparam sequenceMessageAlign center
+
+participant "Sync Service\n(Worker Pool)" as SYNC
+participant "Jira Client" as JC
+participant "Jira REST API" as JIRA
+participant "Repository" as REPO
+database PostgreSQL
+
+loop постранично по всем задачам проекта
+    SYNC -> JC: Поиск задач проекта (JQL, страница N)
+    JC -> JIRA: GET /rest/api/2/search?jql=...
+    alt превышен лимит запросов
+        JIRA --> JC: 429 Too Many Requests
+        JC -> JC: ожидание и повторный запрос\n(экспоненциальный backoff)
+        JC -> JIRA: GET /rest/api/2/search?jql=...
+    end
+    alt ошибка получения задач
+        JIRA --> JC: 5xx ошибка
+        JC --> SYNC: сервис Jira недоступен
+        SYNC -> SYNC: прерываем загрузку
+    else Успех
+        JIRA --> JC: []Issue (JSON)
+        JC --> SYNC: список задач страницы
+    end
+
+    note over SYNC: задачи страницы обрабатываются параллельно
+
+    par для каждой задачи (worker)
+        SYNC -> JC: Получить задачу с историей изменений
+        JC -> JIRA: GET /rest/api/2/issue/{key}?expand=changelog
+        JIRA --> JC: данные задачи + история (JSON)
+        JC --> SYNC: Issue{автор, исполнитель, статусы...}
+
+        SYNC -> REPO: сохранить автора
+        REPO -> PostgreSQL: INSERT INTO raw.author
+        alt автор уже существует
+            PostgreSQL --> REPO: нарушение уникальности (23505)
+            REPO --> SYNC: автор уже существует
+            SYNC -> SYNC: пропускаем
+        else Успех
+            PostgreSQL --> REPO: OK
+        end
+
+        SYNC -> REPO: сохранить задачу
+        REPO -> PostgreSQL: INSERT INTO raw.issue
+        alt задача уже существует
+            PostgreSQL --> REPO: нарушение уникальности (23505)
+            REPO --> SYNC: задача уже существует
+            SYNC -> SYNC: пропускаем
+        else ошибка записи
+            PostgreSQL --> REPO: ошибка
+            REPO --> SYNC: не удалось сохранить задачу
+        else Успех
+            PostgreSQL --> REPO: OK
+        end
+
+        loop для каждого изменения статуса задачи
+            SYNC -> REPO: сохранить изменение статуса
+            REPO -> PostgreSQL: INSERT INTO raw.status_changes
+            alt ошибка записи
+                PostgreSQL --> REPO: ошибка
+                REPO --> SYNC: не удалось сохранить изменение статуса
+            else Успех
+                PostgreSQL --> REPO: OK
+            end
+        end
+    end
+end
+
+@enduml

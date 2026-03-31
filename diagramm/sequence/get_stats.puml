@@ -1,0 +1,61 @@
+@startuml GetStats
+scale 1600x700
+title GetStats
+
+skinparam defaultFontSize 29
+skinparam titleFontSize 33
+skinparam sequenceMessageAlign center
+
+participant Gateway
+participant "Analyzer gRPC" as AS
+participant "Service" as SVC
+participant "Cache" as CACHE
+database PostgreSQL
+
+Gateway -> AS: Запрос статистики проекта
+AS -> SVC: Получить статистику проекта
+
+SVC -> PostgreSQL: Запросить время последнего обновления проекта
+alt ошибка запроса к БД для проекта N
+    PostgreSQL --> SVC: ошибка запроса к БД для проекта N
+    SVC --> AS: не удалось получить время обновления проекта
+    AS --> Gateway: внутренняя ошибка сервера
+else Успех
+    PostgreSQL --> SVC: время обновления в БД
+end
+
+SVC -> CACHE: Запросить время последнего обновления кеша
+alt проект не найден в кеше
+    CACHE --> SVC: проект не найден в кеше
+    SVC -> SVC: считаем кеш устаревшим
+else Успех
+    CACHE --> SVC: время обновления кеша
+end
+
+alt Кеш актуален (TTL проверки: 30 сек)
+    SVC -> CACHE: Получить статистику из кеша
+    alt тип данных не найден в кеше
+        CACHE --> SVC: тип данных не найден в кеше
+        SVC -> SVC: переходим к запросу в БД
+    else Успех
+        CACHE --> SVC: статистика из кеша
+    end
+end
+
+alt Кеш устарел или тип данных не найден в кеше
+    SVC -> PostgreSQL: Запросить статистику из БД
+    alt ошибка запроса к БД для проекта N
+        PostgreSQL --> SVC: ошибка запроса к БД для проекта N
+        SVC --> AS: не удалось получить статистику проекта
+        AS --> Gateway: внутренняя ошибка сервера
+    else Успех
+        PostgreSQL --> SVC: статистика
+        SVC -> CACHE: сохранить статистику в кеш
+        SVC -> CACHE: обновить время последнего обновления
+    end
+else Успех (данные из кеша или БД)
+    SVC --> AS: статистика проекта
+    AS --> Gateway: ответ со статистикой
+end
+
+@enduml

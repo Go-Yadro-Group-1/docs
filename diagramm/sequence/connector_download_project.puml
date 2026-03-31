@@ -1,0 +1,57 @@
+@startuml DownloadProject
+scale 1600x700
+title DownloadProject
+
+skinparam defaultFontSize 29
+skinparam titleFontSize 33
+skinparam sequenceMessageAlign center
+
+participant Gateway
+participant "Connector gRPC" as CS
+participant "Sync Service\n(Worker Pool)" as SYNC
+participant "Jira Client" as JC
+participant "Jira REST API" as JIRA
+participant "Repository" as REPO
+database PostgreSQL
+
+Gateway -> CS: Запрос загрузки проекта (project_id)
+CS -> SYNC: Запустить загрузку проекта
+
+SYNC -> JC: Получить проект по ID
+JC -> JIRA: GET /rest/api/2/project/{id}
+alt проект не найден
+    JIRA --> JC: 404 Not Found
+    JC --> SYNC: не найдено: запрашиваемый ресурс не существует
+    SYNC --> CS: проект не найден
+    CS --> Gateway: данные не найдены
+else неверный токен или учётные данные
+    JIRA --> JC: 401 Unauthorized
+    JC --> SYNC: несанкционированный доступ:\nневерный токен или учётные данные
+    SYNC --> CS: ошибка аутентификации
+    CS --> Gateway: внутренняя ошибка сервера
+else Успех
+    JIRA --> JC: данные проекта (JSON)
+end
+
+SYNC -> REPO: сохранить проект
+REPO -> PostgreSQL: INSERT INTO raw.project
+alt проект уже существует
+    PostgreSQL --> REPO: нарушение уникальности (23505)
+    REPO --> SYNC: проект уже существует
+    SYNC -> SYNC: пропускаем, продолжаем загрузку задач
+else ошибка записи
+    PostgreSQL --> REPO: ошибка
+    REPO --> SYNC: не удалось сохранить проект
+    SYNC --> CS: ошибка сохранения проекта
+    CS --> Gateway: внутренняя ошибка сервера
+else Успех
+    PostgreSQL --> REPO: OK
+end
+
+SYNC -> SYNC: запустить воркер пул для задач проекта
+note right of SYNC: см. диаграмму Worker Pool
+
+SYNC --> CS: загрузка завершена
+CS --> Gateway: DownloadProjectResponse
+
+@enduml
